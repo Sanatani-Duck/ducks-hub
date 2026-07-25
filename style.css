@@ -910,6 +910,9 @@ pointer-events:auto;
 
     padding:22px;
 
+     position:relative;
+     z-index:2;
+
 }
 /* ===================================================== */
 
@@ -1001,6 +1004,9 @@ pointer-events:auto;
 
     top:18px;
     right:18px;
+
+    z-index:5;
+    pointer-events:auto;
 
 }
 
