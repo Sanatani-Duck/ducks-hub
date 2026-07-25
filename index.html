@@ -738,7 +738,12 @@ const viewerTotal = document.getElementById("viewerTotal");
 let currentIndex = 0;
 let isAnimating = false;
 
-const slideClasses = [
+let slideOutTimer = null;
+let slideInTimer = null;
+
+const SLIDE_MS = 380;
+
+const SLIDE_CLASSES = [
     "viewer-img-slide-out-left",
     "viewer-img-slide-out-right",
     "viewer-img-slide-in-start-left",
@@ -749,19 +754,33 @@ const slideClasses = [
 viewerTotal.textContent = galleryImages.length;
 
 function clearSlideClasses() {
-    slideClasses.forEach((cls) => viewerImage.classList.remove(cls));
+    SLIDE_CLASSES.forEach((cls) => viewerImage.classList.remove(cls));
+}
+
+function clearTimers() {
+    if (slideOutTimer) {
+        clearTimeout(slideOutTimer);
+        slideOutTimer = null;
+    }
+
+    if (slideInTimer) {
+        clearTimeout(slideInTimer);
+        slideInTimer = null;
+    }
 }
 
 function setViewerImage(index) {
     const image = galleryImages[index];
-
     viewerImage.src = image.dataset.full || image.src;
     viewerImage.alt = image.alt || "Screenshot";
     viewerCurrent.textContent = index + 1;
 }
 
 function openViewer(index) {
+    clearTimers();
+    isAnimating = false;
     currentIndex = index;
+
     clearSlideClasses();
     setViewerImage(currentIndex);
 
@@ -770,16 +789,21 @@ function openViewer(index) {
 }
 
 function closeViewer() {
+    clearTimers();
+    isAnimating = false;
+
     viewer.classList.remove("active");
     document.body.style.overflow = "";
-    isAnimating = false;
+
     clearSlideClasses();
 }
 
 function goToImage(nextIndex, direction) {
+    if (!viewer.classList.contains("active")) return;
     if (isAnimating || nextIndex === currentIndex) return;
 
     isAnimating = true;
+    clearTimers();
     clearSlideClasses();
 
     const outClass =
@@ -792,52 +816,53 @@ function goToImage(nextIndex, direction) {
             ? "viewer-img-slide-in-start-right"
             : "viewer-img-slide-in-start-left";
 
-    const onSlideOutEnd = (event) => {
-        if (event.propertyName !== "transform") return;
-        viewerImage.removeEventListener("transitionend", onSlideOutEnd);
+    viewerImage.classList.add(outClass);
+
+    slideOutTimer = window.setTimeout(() => {
+        if (!viewer.classList.contains("active")) {
+            isAnimating = false;
+            return;
+        }
 
         currentIndex = nextIndex;
+
+        clearSlideClasses();
         setViewerImage(currentIndex);
 
-        viewerImage.classList.remove(outClass);
         viewerImage.classList.add(inStartClass);
-
         viewerImage.getBoundingClientRect();
 
         requestAnimationFrame(() => {
+            if (!viewer.classList.contains("active")) {
+                isAnimating = false;
+                return;
+            }
+
             viewerImage.classList.remove(inStartClass);
             viewerImage.classList.add("viewer-img-slide-in-ready");
         });
 
-        const onSlideInEnd = (e) => {
-            if (e.propertyName !== "transform") return;
-            viewerImage.removeEventListener("transitionend", onSlideInEnd);
+        slideInTimer = window.setTimeout(() => {
+            if (!viewer.classList.contains("active")) {
+                isAnimating = false;
+                return;
+            }
 
             viewerImage.classList.remove("viewer-img-slide-in-ready");
             isAnimating = false;
-        };
-
-        viewerImage.addEventListener("transitionend", onSlideInEnd, {
-            once: true
-        });
-    };
-
-    viewerImage.addEventListener("transitionend", onSlideOutEnd, {
-        once: true
-    });
-
-    viewerImage.classList.add(outClass);
+        }, SLIDE_MS + 20);
+    }, SLIDE_MS + 20);
 }
 
 function nextImage() {
-    goToImage((currentIndex + 1) % galleryImages.length, "next");
+    const nextIndex = (currentIndex + 1) % galleryImages.length;
+    goToImage(nextIndex, "next");
 }
 
 function previousImage() {
-    goToImage(
-        (currentIndex - 1 + galleryImages.length) % galleryImages.length,
-        "prev"
-    );
+    const prevIndex =
+        (currentIndex - 1 + galleryImages.length) % galleryImages.length;
+    goToImage(prevIndex, "prev");
 }
 
 galleryImages.forEach((image, index) => {
