@@ -736,89 +736,125 @@ const viewerCurrent = document.getElementById("viewerCurrent");
 const viewerTotal = document.getElementById("viewerTotal");
 
 let currentIndex = 0;
+let isAnimating = false;
+
+const slideClasses = [
+    "viewer-img-slide-out-left",
+    "viewer-img-slide-out-right",
+    "viewer-img-slide-in-start-left",
+    "viewer-img-slide-in-start-right",
+    "viewer-img-slide-in-ready"
+];
 
 viewerTotal.textContent = galleryImages.length;
 
-/* ---------- UPDATE IMAGE ---------- */
+function clearSlideClasses() {
+    slideClasses.forEach((cls) => viewerImage.classList.remove(cls));
+}
 
-function updateViewerImage() {
-
-    const image = galleryImages[currentIndex];
+function setViewerImage(index) {
+    const image = galleryImages[index];
 
     viewerImage.src = image.dataset.full || image.src;
-    viewerImage.alt = image.alt;
-    viewerCurrent.textContent = currentIndex + 1;
-
+    viewerImage.alt = image.alt || "Screenshot";
+    viewerCurrent.textContent = index + 1;
 }
 
-/* ---------- OPEN ---------- */
+function openViewer(index) {
+    currentIndex = index;
+    clearSlideClasses();
+    setViewerImage(currentIndex);
 
-galleryImages.forEach((image, index) => {
-
-    image.addEventListener("click", () => {
-
-        currentIndex = index;
-        updateViewerImage();
-
-        viewer.classList.add("active");
-        document.body.style.overflow = "hidden";
-
-    });
-
-});
-
-/* ---------- CLOSE ---------- */
+    viewer.classList.add("active");
+    document.body.style.overflow = "hidden";
+}
 
 function closeViewer() {
-
     viewer.classList.remove("active");
     document.body.style.overflow = "";
-
+    isAnimating = false;
+    clearSlideClasses();
 }
 
-/* ---------- NEXT / PREVIOUS ---------- */
+function goToImage(nextIndex, direction) {
+    if (isAnimating || nextIndex === currentIndex) return;
+
+    isAnimating = true;
+    clearSlideClasses();
+
+    const outClass =
+        direction === "next"
+            ? "viewer-img-slide-out-left"
+            : "viewer-img-slide-out-right";
+
+    const inStartClass =
+        direction === "next"
+            ? "viewer-img-slide-in-start-right"
+            : "viewer-img-slide-in-start-left";
+
+    const onSlideOutEnd = (event) => {
+        if (event.propertyName !== "transform") return;
+        viewerImage.removeEventListener("transitionend", onSlideOutEnd);
+
+        currentIndex = nextIndex;
+        setViewerImage(currentIndex);
+
+        viewerImage.classList.remove(outClass);
+        viewerImage.classList.add(inStartClass);
+
+        viewerImage.getBoundingClientRect();
+
+        requestAnimationFrame(() => {
+            viewerImage.classList.remove(inStartClass);
+            viewerImage.classList.add("viewer-img-slide-in-ready");
+        });
+
+        const onSlideInEnd = (e) => {
+            if (e.propertyName !== "transform") return;
+            viewerImage.removeEventListener("transitionend", onSlideInEnd);
+
+            viewerImage.classList.remove("viewer-img-slide-in-ready");
+            isAnimating = false;
+        };
+
+        viewerImage.addEventListener("transitionend", onSlideInEnd, {
+            once: true
+        });
+    };
+
+    viewerImage.addEventListener("transitionend", onSlideOutEnd, {
+        once: true
+    });
+
+    viewerImage.classList.add(outClass);
+}
 
 function nextImage() {
-
-    currentIndex++;
-
-    if (currentIndex >= galleryImages.length) {
-        currentIndex = 0;
-    }
-
-    updateViewerImage();
-
+    goToImage((currentIndex + 1) % galleryImages.length, "next");
 }
 
 function previousImage() {
-
-    currentIndex--;
-
-    if (currentIndex < 0) {
-        currentIndex = galleryImages.length - 1;
-    }
-
-    updateViewerImage();
-
+    goToImage(
+        (currentIndex - 1 + galleryImages.length) % galleryImages.length,
+        "prev"
+    );
 }
 
-/* ---------- BUTTONS ---------- */
+galleryImages.forEach((image, index) => {
+    image.addEventListener("click", () => openViewer(index));
+});
 
 viewerClose.addEventListener("click", closeViewer);
 viewerBackdrop.addEventListener("click", closeViewer);
 viewerNext.addEventListener("click", nextImage);
 viewerPrev.addEventListener("click", previousImage);
 
-/* ---------- ESC ---------- */
-
 document.addEventListener("keydown", (e) => {
-
     if (!viewer.classList.contains("active")) return;
 
     if (e.key === "Escape") closeViewer();
-    if (e.key === "ArrowRight") nextImage();
-    if (e.key === "ArrowLeft") previousImage();
-
+    else if (e.key === "ArrowRight") nextImage();
+    else if (e.key === "ArrowLeft") previousImage();
 });
     
 
