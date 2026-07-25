@@ -726,25 +726,41 @@ reveals.forEach(item=>{
 const galleryImages = document.querySelectorAll(".screenshot-card img");
 
 const viewer = document.getElementById("viewer");
-
 const viewerImage = document.getElementById("viewerImage");
 
 const viewerBackdrop = document.querySelector(".viewer-backdrop");
-
 const viewerClose = document.querySelector(".viewer-close");
+const viewerPrev = document.querySelector(".viewer-prev");
+const viewerNext = document.querySelector(".viewer-next");
+const viewerCurrent = document.getElementById("viewerCurrent");
+const viewerTotal = document.getElementById("viewerTotal");
+
+let currentIndex = 0;
+
+viewerTotal.textContent = galleryImages.length;
+
+/* ---------- UPDATE IMAGE ---------- */
+
+function updateViewerImage() {
+
+    const image = galleryImages[currentIndex];
+
+    viewerImage.src = image.dataset.full || image.src;
+    viewerImage.alt = image.alt;
+    viewerCurrent.textContent = currentIndex + 1;
+
+}
 
 /* ---------- OPEN ---------- */
 
-galleryImages.forEach(image => {
+galleryImages.forEach((image, index) => {
 
     image.addEventListener("click", () => {
 
-        viewerImage.src = image.dataset.full;
-
-        viewerImage.alt = image.alt;
+        currentIndex = index;
+        updateViewerImage();
 
         viewer.classList.add("active");
-
         document.body.style.overflow = "hidden";
 
     });
@@ -756,24 +772,52 @@ galleryImages.forEach(image => {
 function closeViewer() {
 
     viewer.classList.remove("active");
-
     document.body.style.overflow = "";
 
 }
 
-viewerClose.addEventListener("click", closeViewer);
+/* ---------- NEXT / PREVIOUS ---------- */
 
+function nextImage() {
+
+    currentIndex++;
+
+    if (currentIndex >= galleryImages.length) {
+        currentIndex = 0;
+    }
+
+    updateViewerImage();
+
+}
+
+function previousImage() {
+
+    currentIndex--;
+
+    if (currentIndex < 0) {
+        currentIndex = galleryImages.length - 1;
+    }
+
+    updateViewerImage();
+
+}
+
+/* ---------- BUTTONS ---------- */
+
+viewerClose.addEventListener("click", closeViewer);
 viewerBackdrop.addEventListener("click", closeViewer);
+viewerNext.addEventListener("click", nextImage);
+viewerPrev.addEventListener("click", previousImage);
 
 /* ---------- ESC ---------- */
 
 document.addEventListener("keydown", (e) => {
 
-    if (e.key === "Escape") {
+    if (!viewer.classList.contains("active")) return;
 
-        closeViewer();
-
-    }
+    if (e.key === "Escape") closeViewer();
+    if (e.key === "ArrowRight") nextImage();
+    if (e.key === "ArrowLeft") previousImage();
 
 });
     
